@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>OrderArt KDS — Kitchen Display System</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg:        #0c0e16;
+  --surface:   #161926;
+  --surface2:  #1e2235;
+  --border:    #252a40;
+  --text:      #eef2f7;
+  --muted:     #7a85a0;
+  --dim:       #3d4460;
+  --green:     #2ecc71;
+  --green-dk:  #1a7a44;
+  --orange:    #e67e22;
+  --red:       #e74c3c;
+  --blue:      #3498db;
+  --radius:    14px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ══════════════════════════════════════════
+   TOP BAR
+══════════════════════════════════════════ */
+.topbar {
+  height: 80px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 12px;
+  flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.topbar::-webkit-scrollbar { display: none; }
+
+.logo {
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.logo .art { color: #f39c12; }
+.logo .kds { font-weight: 400; font-size: 11px; color: var(--muted); margin-left: 4px; vertical-align: middle; }
+
+.vsep { width: 1px; height: 38px; background: var(--border); flex-shrink: 0; }
+
+/* Open / Completed tabs */
+.tab-group {
+  display: flex;
+  background: var(--bg);
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.tab {
+  padding: 11px 22px;
+  border-radius: 9px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--muted);
+  border: none;
+  background: transparent;
+  transition: all 0.15s;
+  touch-action: manipulation;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 46px;
+}
+.tab.active { background: var(--blue); color: #fff; }
+.badge {
+  background: rgba(255,255,255,0.22);
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* Source filters */
+.src-filters { display: flex; gap: 6px; flex-shrink: 0; }
+.sf {
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  transition: all 0.15s;
+  touch-action: manipulation;
+  white-space: nowrap;
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+}
+.sf.active { color: #fff; background: var(--surface2); border-color: #3d4460; }
+
+.spacer { flex: 1; min-width: 8px; }
+
+.clock {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════
+   GRID — horizontal scroll, one column per order
+══════════════════════════════════════════ */
+.grid {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;   /* each card its own natural height */
+  gap: 10px;
+  padding: 10px;
+  overflow-x: auto;          /* scroll right for more orders */
+  overflow-y: auto;
+}
+/* Horizontal scrollbar */
+.grid::-webkit-scrollbar        { height: 6px; }
+.grid::-webkit-scrollbar-track  { background: transparent; }
+.grid::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 3px; }
+
+/* ══════════════════════════════════════════
+   ORDER CARD
+══════════════════════════════════════════ */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1.5px solid var(--border);
+  transition: opacity 0.25s, transform 0.2s;
+  flex-shrink: 0;            /* never compress a card */
+  width: 300px;              /* one card = one column */
+}
+/* Narrower on tablets */
+@media (max-width: 780px) { .card { width: 260px; } }
+.card.exiting { opacity: 0; transform: scale(0.96) translateY(6px); pointer-events: none; }
+
+/* Card header */
+.card-hdr {
+  padding: 10px 12px 8px;
+}
+.card-hdr.h-urgent,
+.card-hdr.h-warning,
+.card-hdr.h-normal,
+.card-hdr.h-done    { background: #13182a; }
+
+/* ── Header row 1: order# · source badge · name/table · elapsed ── */
+.hdr-r1 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 7px;
+}
+/* ── Header row 2: due-in countdown · spacer · scheduled time ── */
+.hdr-r2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Order number — large, bold, monospaced numerals */
+.h-ordnum {
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+}
+
+/* Source type badge — icon only, coloured rounded square */
+.h-srcbadge {
+  height: 30px;
+  min-width: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+/* Dine-in variant — wider pill showing table number as text */
+.h-tablebadge {
+  padding: 0 11px;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.3px;
+  color: #74c6ff;
+}
+.si-dine-in      { background: rgba(52,152,219,0.28); }
+.si-pos-takeaway { background: rgba(230,126,34,0.28); }
+.si-pos-delivery { background: rgba(155,89,182,0.28); }
+.si-web-takeaway { background: rgba(26,188,156,0.28); }
+.si-web-delivery { background: rgba(142,68,173,0.28); }
+.si-uber         { background: rgba(6,193,103,0.18); border: 1px solid rgba(6,193,103,0.38); }
+.si-ai-order     { background: rgba(167,139,250,0.22); border: 1px solid rgba(167,139,250,0.38); }
+
+/* Customer name (non-dine-in) */
+.h-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+}
+
+/* Table identifier (dine-in) */
+.h-table {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 15px;
+  font-weight: 900;
+  color: #74c6ff;
+  white-space: nowrap;
+}
+.h-table .tbl-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: rgba(116,198,255,0.65);
+}
+
+/* Elapsed timer — urgency-coloured pill, always right-aligned */
+.h-elapsed {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0,0,0,0.32);
+  border-radius: 8px;
+  padding: 5px 11px;
+  font-size: 20px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin-left: auto;
+}
+.h-elapsed .he-icon { font-size: 12px; opacity: 0.7; line-height: 1; }
+.h-elapsed.t-over    { color: #ff6b6b; }
+.h-elapsed.t-warning { color: #ffc07a; }
+.h-elapsed.t-ok      { color: #7be6a8; }
+
+/* Due-in countdown pill (row 2 left) */
+.h-duein {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  background: rgba(255,255,255,0.06);
+  white-space: nowrap;
+}
+.h-duein.di-soon  { color: #ff6b6b; background: rgba(255,107,107,0.13); }
+.h-duein.di-close { color: #ffc07a; background: rgba(255,192,122,0.13); }
+
+/* Scheduled due time (row 2 right) */
+.h-duetime {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* Completed badge */
+.h-donetag {
+  font-size: 13px;
+  font-weight: 800;
+  color: #2ecc71;
+  margin-left: auto;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
+/* Progress bar */
+.prog-track {
+  height: 4px;
+  background: rgba(0,0,0,0.4);
+  flex-shrink: 0;
+}
+.prog-fill {
+  height: 100%;
+  background: var(--green);
+  transition: width 0.35s ease;
+}
+
+/* Note banner */
+.note-banner {
+  background: rgba(230,126,34,0.13);
+  border-left: 3px solid var(--orange);
+  padding: 7px 12px;
+  font-size: 12px;
+  font-style: italic;
+  color: #ffc07a;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.note-banner .note-icon { flex-shrink: 0; margin-top: 1px; }
+
+/* Items */
+.items-scroll {
+  overflow: visible;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  min-height: 62px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+.item:last-child { border-bottom: none; }
+.item:active { background: rgba(255,255,255,0.04); }
+.item.done { background: rgba(46,204,113,0.07); }
+
+/* Swipe flash */
+.item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(46,204,113,0);
+  pointer-events: none;
+  transition: background 0.2s;
+}
+.item.flash::after { background: rgba(46,204,113,0.18); }
+
+/* Align checkbox & qty to top of item */
+.chk       { margin-top: 2px; }
+.item-qty  { margin-top: 2px; }
+
+/* Checkbox */
+.chk {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2.5px solid var(--dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 17px;
+  transition: all 0.2s;
+  color: transparent;
+}
+.item.done .chk {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+
+.item-qty {
+  font-size: 20px;
+  font-weight: 900;
+  min-width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+.item.done .item-qty { color: var(--dim); }
+
+.item-body { flex: 1; min-width: 0; }
+
+.item-name {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  transition: all 0.2s;
+}
+.item.done .item-name {
+  text-decoration: line-through;
+  color: var(--text);
+}
+
+/* ── Modifier groups ── */
+.mods-grouped {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.mod-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.mod {
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 5px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+}
+/* Size / base / style variants — blue */
+.mod-variant {
+  background: rgba(52,152,219,0.2);
+  color: #74c6ff;
+}
+/* Removals — red, slightly larger to catch attention */
+.mod-remove {
+  background: rgba(231,76,60,0.2);
+  color: #ff6b6b;
+  font-size: 13px;
+}
+/* Additions — green */
+.mod-add {
+  background: rgba(46,204,113,0.18);
+  color: #5de89b;
+}
+/* Extra — existing ingredient with boosted quantity (NOT an add-on) */
+.mod-extra {
+  background: rgba(230,126,34,0.18);
+  color: #f0a05a;
+  border: 1px solid rgba(230,126,34,0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.mod-extra .qty-badge {
+  background: rgba(230,126,34,0.35);
+  border-radius: 3px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fbd38d;
+}
+/* Dietary / preference flags — amber, with border for prominence */
+.mod-dietary {
+  background: rgba(246,173,85,0.15);
+  color: #f6ad55;
+  border: 1px solid rgba(246,173,85,0.35);
+}
+
+/* Item-level comment / special instruction */
+.item-comment {
+  margin-top: 7px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  background: rgba(251,211,141,0.08);
+  border-left: 2px solid rgba(251,211,141,0.45);
+  border-radius: 0 6px 6px 0;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-style: italic;
+  color: #fbd38d;
+  line-height: 1.45;
+}
+.item-comment .ic-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  font-style: normal;
+  opacity: 0.8;
+}
+
+.item-hint {
+  font-size: 10px;
+  color: var(--dim);
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.2s;
+  text-align: center;
+  line-height: 1.3;
+}
+.item.done .item-hint { opacity: 1; }
+
+/* ══════════════════════════════════════════
+   BUMP BUTTON
+══════════════════════════════════════════ */
+.bump-btn {
+  height: 70px;
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: background 0.15s, transform 0.1s;
+  flex-shrink: 0;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.bump-btn:active { transform: scale(0.98); filter: brightness(0.9); }
+
+.bump-btn.b-partial {
+  background: #1a4d35;
+  color: rgba(255,255,255,0.6);
+}
+.bump-btn.b-ready {
+  background: var(--green);
+  animation: bpulse 1.8s ease-in-out infinite;
+}
+@keyframes bpulse {
+  0%,100% { background: #27ae60; }
+  50%      { background: #1e8449; box-shadow: inset 0 0 0 3px rgba(255,255,255,0.15); }
+}
+.bump-btn.b-reopen {
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 14px;
+}
+.bump-btn.b-reopen:hover { background: #282e48; }
+
+/* ══════════════════════════════════════════
+   UNDO TOAST
+══════════════════════════════════════════ */
+.toast {
+  position: fixed;
+  bottom: 58px;
+  left: 50%;
+  transform: translateX(-50%) translateY(130px);
+  background: #141824;
+  border: 2px solid var(--green);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 999;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  width: 390px;
+  max-width: calc(100vw - 24px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.7);
+  overflow: hidden;
+}
+.toast.visible { transform: translateX(-50%) translateY(0); }
+
+.toast-icon { font-size: 28px; flex-shrink: 0; }
+
+.toast-body { flex: 1; min-width: 0; }
+.toast-title { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.toast-sub   { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.toast-cd    { font-weight: 800; color: var(--text); }
+
+.toast-undo {
+  background: var(--orange);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  touch-action: manipulation;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.toast-undo:active { background: #c0672b; }
+
+.toast-prog {
+  position: absolute;
+  bottom: 0; left: 0;
+  height: 3px;
+  background: var(--green);
+  transition: width linear;
+}
+
+/* ══════════════════════════════════════════
+   BOTTOM BAR
+══════════════════════════════════════════ */
+.botbar {
+  height: 50px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 12px;
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+.botbar::-webkit-scrollbar { display: none; }
+
+.bstat {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.bstat strong { font-size: 17px; font-weight: 900; color: var(--text); }
+
+.bsep { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
+
+.legend { display: flex; gap: 10px; }
+.leg {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+.leg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+.b-spacer { flex: 1; }
+
+.printer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.pled {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: blink 3s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{ opacity:1; } 50%{ opacity:0.45; } }
+
+/* ══════════════════════════════════════════
+   EMPTY STATE
+══════════════════════════════════════════ */
+.empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+  gap: 10px;
+}
+.empty .ei    { font-size: 60px; opacity: 0.15; }
+.empty .et    { font-size: 20px; font-weight: 700; color: var(--dim); }
+.empty .es    { font-size: 13px; color: var(--dim); opacity: 0.7; }
+
+/* Design annotations (for presentation) */
+.annotation {
+  position: absolute;
+  background: rgba(52,152,219,0.9);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 10;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     TOP BAR
+══════════════════════════════════════════ -->
+<div class="topbar">
+  <img src="/orderart-logo.png" alt="OrderArt" style="height:24px;width:auto;flex-shrink:0;object-fit:contain;"> <span style="font-size:11px;font-weight:600;color:var(--muted);flex-shrink:0;letter-spacing:1px;text-transform:uppercase;">KDS</span>
+
+  <div class="vsep"></div>
+
+  <div class="tab-group">
+    <button class="tab active" id="tab-open" onclick="switchTab('open')">
+      Open <span class="badge" id="badge-open">0</span>
+    </button>
+    <button class="tab" id="tab-completed" onclick="switchTab('completed')">
+      Completed <span class="badge" id="badge-done">0</span>
+    </button>
+  </div>
+
+  <div class="vsep"></div>
+
+  <div class="src-filters" id="src-filters">
+    <button class="sf active" data-src="all"          onclick="filterSrc(this)">All</button>
+    <button class="sf"        data-src="dine-in"      onclick="filterSrc(this)">🍽 Dine In</button>
+    <button class="sf"        data-src="pos-takeaway" onclick="filterSrc(this)">🛍 POS Takeaway</button>
+    <button class="sf"        data-src="pos-delivery" onclick="filterSrc(this)">🛵 POS Delivery</button>
+    <button class="sf"        data-src="web-takeaway" onclick="filterSrc(this)">🌐 Web Takeaway</button>
+    <button class="sf"        data-src="web-delivery" onclick="filterSrc(this)">🌐 Web Delivery</button>
+    <button class="sf"        data-src="uber"         onclick="filterSrc(this)">🟢 Uber Eats</button>
+    <button class="sf"        data-src="ai-order"     onclick="filterSrc(this)">🤖 AI Orders</button>
+  </div>
+
+  <div class="spacer"></div>
+  <div class="clock" id="clock">--:-- --</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     ORDER GRID
+══════════════════════════════════════════ -->
+<div class="grid" id="grid"></div>
+
+<!-- ══════════════════════════════════════════
+     BOTTOM BAR
+══════════════════════════════════════════ -->
+<div class="botbar">
+  <div class="bstat">Open <strong id="st-open">0</strong></div>
+  <div class="bsep"></div>
+  <div class="bstat">Completed <strong id="st-done">0</strong></div>
+  <div class="bsep"></div>
+  <div class="legend">
+    <div class="leg"><div class="leg-dot" style="background:#7d2020"></div>Urgent 20+ min</div>
+    <div class="leg"><div class="leg-dot" style="background:#7d3d18"></div>Warning 10–20 min</div>
+    <div class="leg"><div class="leg-dot" style="background:#1a2038"></div>Normal</div>
+  </div>
+  <div class="b-spacer"></div>
+  <div class="printer"><div class="pled"></div>KDS PRINTER 1</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     UNDO TOAST
+══════════════════════════════════════════ -->
+<div class="toast" id="toast">
+  <div class="toast-icon">✅</div>
+  <div class="toast-body">
+    <div class="toast-title" id="toast-title">Order bumped</div>
+    <div class="toast-sub">Tap UNDO within <span class="toast-cd" id="toast-cd">8</span>s to restore</div>
+  </div>
+  <button class="toast-undo" onclick="doUndo()">↩ UNDO</button>
+  <div class="toast-prog" id="toast-prog" style="width:100%"></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// SAMPLE DATA
+// ══════════════════════════════════════════
+let orders = [
+
+  // ── #45 Table 3 — Dine In — simple margherita round ──
+  {
+    id: 1, source: 'dine-in', num: '#45', name: 'Table 3',
+    elapsed: 24, sched: null, note: null, status: 'open',
+    items: [
+      { id: 101, qty: 2, name: 'Margherita', done: false, mods: [
+        {t:'variant', v:'Large'},
+        {t:'remove',  v:'Basil'},
+        {t:'extra',   v:'Mozzarella', qty: 1},
+        {t:'dietary', v:'Gluten Free Base'},
+      ]},
+      { id: 102, qty: 1, name: 'Bruschetta', done: false, mods: [] },
+      { id: 103, qty: 2, name: 'Soft Drink', done: false, mods: [{t:'variant', v:'Lemonade'}] },
+    ]
+  },
+
+  // ── #46 James O. — POS Takeaway — BBQ Chicken ──
+  {
+    id: 2, source: 'pos-takeaway', num: '#46', name: 'James O.',
+    elapsed: 16, sched: '6:15pm', note: null, status: 'open',
+    items: [
+      { id: 201, qty: 1, name: 'BBQ Chicken Pizza', done: false, comment: 'Pack it for takeaway', mods: [
+        {t:'variant', v:'Large'},
+        {t:'variant', v:'Thin Crust'},
+        {t:'extra',   v:'Chicken', qty: 1},
+        {t:'add',     v:'Jalapeño'},
+        {t:'add',     v:'Red Onion'},
+        {t:'dietary', v:'Halal Meat'},
+      ]},
+      { id: 202, qty: 1, name: 'Cheesy Garlic Bread', done: false, comment: 'Wrap separately', mods: [] },
+      { id: 203, qty: 1, name: 'Soft Drink', done: false, mods: [{t:'variant', v:'Pepsi'}] },
+    ]
+  },
+
+  // ── #47 Sophie M. — Web Delivery — Meat Lovers beast ──
+  {
+    id: 3, source: 'web-delivery', num: '#47', name: 'Sophie M.',
+    elapsed: 6, sched: '6:30pm', note: null, status: 'open',
+    items: [
+      { id: 301, qty: 1, name: 'Meat Lovers Pizza', done: false, mods: [
+        {t:'variant', v:'XL'},
+        {t:'variant', v:'Stuffed Crust'},
+        {t:'extra',   v:'Pepperoni', qty: 2},
+        {t:'extra',   v:'Bacon', qty: 1},
+        {t:'add',     v:'Jalapeño'},
+        {t:'add',     v:'Sun-dried Tomato'},
+        {t:'dietary', v:'Halal Meat'},
+      ]},
+      { id: 302, qty: 1, name: 'Penne Arrabbiata', done: false, mods: [
+        {t:'variant', v:'Extra Spicy'},
+        {t:'add',     v:'Parmesan'},
+      ]},
+      { id: 303, qty: 2, name: 'Garlic Bread', done: false, mods: [] },
+    ]
+  },
+
+  // ── #48 Uber #4421 — Uber Eats — classic combo ──
+  {
+    id: 4, source: 'uber', num: '#48', name: 'Uber #4421',
+    elapsed: 21, sched: '6:00pm', note: null, status: 'open',
+    items: [
+      { id: 401, qty: 2, name: 'Pepperoni Pizza', done: false, mods: [
+        {t:'variant', v:'Medium'},
+        {t:'extra',   v:'Pepperoni', qty: 1},
+      ]},
+      { id: 402, qty: 1, name: 'Arancini (4 pcs)', done: false, mods: [] },
+      { id: 403, qty: 1, name: 'Caesar Salad', done: false, comment: 'Dressing on the side please', mods: [
+        {t:'remove',  v:'Anchovies'},
+        {t:'add',     v:'Grilled Chicken'},
+      ]},
+      { id: 404, qty: 2, name: 'Tiramisu', done: false, mods: [] },
+    ]
+  },
+
+  // ── #49 Table 7 — Dine In — fully vegan ──
+  {
+    id: 5, source: 'dine-in', num: '#49', name: 'Table 7',
+    elapsed: 11, sched: null, note: 'Fully vegan table — no animal products', status: 'open',
+    items: [
+      { id: 501, qty: 1, name: 'Truffle Mushroom Pizza', done: false, mods: [
+        {t:'variant', v:'Large'},
+        {t:'remove',  v:'Onion'},
+        {t:'add',     v:'Rocket'},
+        {t:'add',     v:'Truffle Oil'},
+        {t:'dietary', v:'Vegan Cheese'},
+        {t:'dietary', v:'Gluten Free Base'},
+      ]},
+      { id: 502, qty: 1, name: 'Pesto Pasta', done: false, mods: [
+        {t:'add',     v:'Pine Nuts'},
+        {t:'dietary', v:'Dairy Free'},
+      ]},
+      { id: 503, qty: 2, name: 'House Salad', done: false, mods: [
+        {t:'remove',  v:'Croutons'},
+        {t:'remove',  v:'Feta'},
+      ]},
+    ]
+  },
+
+  // ── #50 Chris W. — POS Delivery — Hawaiian (no pineapple 😄) ──
+  {
+    id: 6, source: 'pos-delivery', num: '#50', name: 'Chris W.',
+    elapsed: 8, sched: '6:45pm', note: null, status: 'open',
+    items: [
+      { id: 601, qty: 1, name: 'Hawaiian Pizza', done: false, mods: [
+        {t:'variant', v:'Large'},
+        {t:'remove',  v:'Pineapple'},
+        {t:'add',     v:'Jalapeño'},
+        {t:'add',     v:'Bacon'},
+        {t:'dietary', v:'Halal Meat'},
+      ]},
+      { id: 602, qty: 1, name: 'Lasagne', done: false, comment: 'Extra hot please', mods: [
+        {t:'extra',   v:'Beef', qty: 1},
+      ]},
+      { id: 603, qty: 1, name: 'Panna Cotta', done: false, mods: [
+        {t:'variant', v:'Vanilla'},
+        {t:'add',     v:'Berry Coulis'},
+      ]},
+    ]
+  },
+
+  // ── #51 AI Voice — simple pasta run ──
+  {
+    id: 7, source: 'ai-order', num: '#51', name: 'AI — Voice Order',
+    elapsed: 4, sched: '6:50pm', note: 'Placed via AI voice assistant', status: 'open',
+    items: [
+      { id: 701, qty: 1, name: 'Spaghetti Bolognese', done: false, mods: [
+        {t:'extra',   v:'Meat Sauce', qty: 1},
+        {t:'add',     v:'Parmesan'},
+        {t:'dietary', v:'Halal Meat'},
+      ]},
+      { id: 702, qty: 1, name: 'Fettuccine Alfredo', done: false, mods: [
+        {t:'add',     v:'Grilled Chicken'},
+        {t:'dietary', v:'Dairy Free'},
+      ]},
+      { id: 703, qty: 2, name: 'Cheesy Garlic Bread', done: false, mods: [] },
+    ]
+  },
+
+  // ── #52 Emma T. — Web Takeaway — nut allergy ──
+  {
+    id: 8, source: 'web-takeaway', num: '#52', name: 'Emma T.',
+    elapsed: 18, sched: '6:10pm', note: '⚠ Severe nut allergy — no pesto or pine nuts', status: 'open',
+    items: [
+      { id: 801, qty: 1, name: 'Margherita', done: false, mods: [
+        {t:'variant', v:'Medium'},
+        {t:'add',     v:'Spinach'},
+        {t:'add',     v:'Roasted Capsicum'},
+        {t:'dietary', v:'Vegan Cheese'},
+      ]},
+      { id: 802, qty: 1, name: 'Caesar Salad', done: false, mods: [
+        {t:'remove',  v:'Croutons'},
+        {t:'remove',  v:'Anchovies'},
+        {t:'add',     v:'Grilled Chicken'},
+      ]},
+      { id: 803, qty: 1, name: 'Garlic Bread', done: false, mods: [] },
+      { id: 804, qty: 1, name: 'Tiramisu', done: false, mods: [] },
+    ]
+  },
+
+  // ── #32 Table 5 — Dine In — AMICI SPECIAL (keep intact) ──
+  {
+    id: 10, source: 'dine-in', num: '#32', name: 'Table 5',
+    elapsed: 7, sched: null, note: null, status: 'open',
+    items: [
+      { id: 1001, qty: 1, name: 'Amici Special Pizza', done: false, mods: [
+        {t:'variant',  v:'Large Size'},
+        {t:'variant',  v:'Thin Crust Base'},
+        {t:'remove',   v:'Mushrooms'},
+        {t:'remove',   v:'Onion'},
+        {t:'extra',    v:'Chicken', qty: 1},
+        {t:'add',      v:'Salami'},
+        {t:'add',      v:'Pineapple'},
+        {t:'add',      v:'Olives'},
+        {t:'add',      v:'Sausages'},
+        {t:'dietary',  v:'Vegan Cheese'},
+        {t:'dietary',  v:'Halal Meat'},
+      ]},
+      { id: 1002, qty: 2, name: 'Garlic Bread', done: false, mods: [] },
+      { id: 1003, qty: 2, name: 'Soft Drink', done: false, mods: [{t:'variant', v:'Coke'}] },
+    ]
+  },
+
+  // ── #44 Mark R. — Completed ──
+  {
+    id: 9, source: 'pos-takeaway', num: '#44', name: 'Mark R.',
+    elapsed: 28, sched: '5:45pm', note: null, status: 'completed',
+    items: [
+      { id: 901, qty: 1, name: 'Pepperoni Pizza', done: true, mods: [{t:'variant', v:'Medium'}] },
+      { id: 902, qty: 1, name: 'Cheesy Garlic Bread', done: true, mods: [] },
+      { id: 903, qty: 2, name: 'Soft Drink', done: true, mods: [{t:'variant', v:'Coke'}] },
+    ]
+  },
+
+];
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let activeTab    = 'open';
+let activeSrc    = 'all';
+let undoData     = null;
+let undoTimer    = null;
+let undoCdTick   = null;
+let cdLeft       = 8;
+
+const UNDO_SECS  = 8;
+
+// ══════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════
+function urgency(mins) {
+  if (mins >= 20) return 'urgent';
+  if (mins >= 10) return 'warning';
+  return 'normal';
+}
+function timerCls(mins) {
+  if (mins >= 20) return 't-over';
+  if (mins >= 10) return 't-warning';
+  return 't-ok';
+}
+function fmtTimer(mins) {
+  if (mins < 60) return `${mins}m`;
+  return `${Math.floor(mins/60)}h ${mins%60}m`;
+}
+// Parse "6:15pm" → minutes until that time (null if no sched)
+// Uses a demo base of 5:50 PM so all sample scheduled times look realistic
+const DEMO_NOW_MINS = 17 * 60 + 50; // 5:50 PM in minutes since midnight
+function getDueIn(schedStr) {
+  if (!schedStr) return null;
+  const m = schedStr.match(/^(\d+):(\d+)(am|pm)$/i);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  const ap  = m[3].toLowerCase();
+  if (ap === 'pm' && h < 12) h += 12;
+  if (ap === 'am' && h === 12) h = 0;
+  const schedMins = h * 60 + min;
+  const diff = schedMins - DEMO_NOW_MINS;
+  return diff >= 0 ? diff : diff + 24 * 60; // wrap past midnight
+}
+const SRC_META = {
+  'dine-in'      : { icon:'🍽', label:'Dine In',       cls:'s-dine-in'      },
+  'pos-takeaway' : { icon:'🛍', label:'POS Takeaway',  cls:'s-pos-takeaway' },
+  'pos-delivery' : { icon:'🛵', label:'POS Delivery',  cls:'s-pos-delivery' },
+  'web-takeaway' : { icon:'🌐', label:'Web Takeaway',  cls:'s-web-takeaway' },
+  'web-delivery' : { icon:'🌐', label:'Web Delivery',  cls:'s-web-delivery' },
+  'uber'         : { icon:'🟢', label:'Uber Eats',     cls:'s-uber'         },
+  'ai-order'     : { icon:'🤖', label:'AI Order',      cls:'s-ai-order'     },
+};
+
+// ══════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════
+function render() {
+  const grid   = document.getElementById('grid');
+  const openN  = orders.filter(o => o.status === 'open').length;
+  const doneN  = orders.filter(o => o.status === 'completed').length;
+
+  document.getElementById('badge-open').textContent  = openN;
+  document.getElementById('badge-done').textContent  = doneN;
+  document.getElementById('st-open').textContent     = openN;
+  document.getElementById('st-done').textContent     = doneN;
+
+  const visible = orders.filter(o => {
+    if (o.status !== activeTab) return false;
+    if (activeSrc !== 'all' && o.source !== activeSrc) return false;
+    return true;
+  });
+
+  if (visible.length === 0) {
+    const emptyMsg = activeTab === 'open'
+      ? ['🍳', 'All caught up!', 'No open orders — new orders will appear here.']
+      : ['✅', 'No completed orders', 'Bump an order to see it here.'];
+    grid.innerHTML = `
+      <div class="empty">
+        <div class="ei">${emptyMsg[0]}</div>
+        <div class="et">${emptyMsg[1]}</div>
+        <div class="es">${emptyMsg[2]}</div>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = visible.map(renderCard).join('');
+}
+
+// ── Render grouped modifiers ──
+function renderMods(mods) {
+  if (!mods || !mods.length) return '';
+  const g = {
+    variant : mods.filter(m => m.t === 'variant'),
+    remove  : mods.filter(m => m.t === 'remove'),
+    add     : mods.filter(m => m.t === 'add'),
+    extra   : mods.filter(m => m.t === 'extra'),
+    dietary : mods.filter(m => m.t === 'dietary'),
+  };
+  const rows = [];
+  if (g.variant.length)
+    rows.push(`<div class="mod-row">${g.variant.map(m =>
+      `<span class="mod mod-variant">${m.v}</span>`).join('')}</div>`);
+  if (g.remove.length)
+    rows.push(`<div class="mod-row">${g.remove.map(m =>
+      `<span class="mod mod-remove">NO ${m.v}</span>`).join('')}</div>`);
+  // Extras: existing ingredients with increased quantity — separate from add-ons
+  if (g.extra.length)
+    rows.push(`<div class="mod-row">${g.extra.map(m =>
+      `<span class="mod mod-extra">Extra ${m.v}<span class="qty-badge">×${m.qty||1}</span></span>`).join('')}</div>`);
+  // Add-ons: brand new ingredients not in the base recipe
+  if (g.add.length)
+    rows.push(`<div class="mod-row">${g.add.map(m =>
+      `<span class="mod mod-add">+ ${m.v}</span>`).join('')}</div>`);
+  if (g.dietary.length)
+    rows.push(`<div class="mod-row">${g.dietary.map(m =>
+      `<span class="mod mod-dietary">◆ ${m.v}</span>`).join('')}</div>`);
+  return rows.length ? `<div class="mods-grouped">${rows.join('')}</div>` : '';
+}
+
+function renderCard(o) {
+  const isDone   = o.status === 'completed';
+  const urg      = isDone ? 'done' : urgency(o.elapsed);
+  const tc       = timerCls(o.elapsed);
+  const meta     = SRC_META[o.source] || { icon:'?', label: o.source, cls:'' };
+  const doneItems = o.items.filter(i => i.done).length;
+  const total    = o.items.length;
+  const allDone  = doneItems === total;
+  const pct      = total > 0 ? Math.round(doneItems / total * 100) : 0;
+
+  // ── Header sub-elements ──
+  // For dine-in: badge becomes "Table N" pill; no separate identity element
+  // For others: badge is icon, identity shows customer name
+  const isTable    = o.source === 'dine-in';
+  const tableMatch = isTable && o.name ? o.name.match(/Table\s+(\S+)/i) : null;
+  const tableNum   = tableMatch ? tableMatch[1] : null;
+
+  const badgeHtml = isTable && tableNum
+    ? `<div class="h-srcbadge h-tablebadge si-dine-in">Table ${tableNum}</div>`
+    : `<div class="h-srcbadge si-${o.source}">${meta.icon}</div>`;
+
+  const identHtml = isTable && tableNum
+    ? '' // table info already in the badge
+    : (o.name ? `<div class="h-name">${o.name}</div>` : '');
+
+  // Due-in countdown from scheduled time
+  const dueIn     = getDueIn(o.sched);
+  const dueInCls  = dueIn !== null
+    ? (dueIn <= 5 ? 'di-soon' : dueIn <= 15 ? 'di-close' : '') : '';
+  const dueInHtml = dueIn !== null
+    ? `<div class="h-duein ${dueInCls}">${dueIn > 0 ? 'Due in ' + dueIn + 'm' : 'Due NOW'}</div>`
+    : '';
+  const dueTimeHtml = o.sched
+    ? `<div class="h-duetime"><span>🕐</span>${o.sched}</div>`
+    : '';
+
+  const noteHtml = o.note ? `
+    <div class="note-banner">
+      <span class="note-icon">⚠️</span>
+      <span>${o.note}</span>
+    </div>` : '';
+
+  const itemsHtml = o.items.map(item => `
+    <div class="item${item.done ? ' done' : ''}" id="item-${item.id}" onclick="toggleItem(${o.id},${item.id})">
+      <div class="chk">${item.done ? '✓' : ''}</div>
+      <div class="item-qty">${item.qty}</div>
+      <div class="item-body">
+        <div class="item-name">${item.name}</div>
+        ${renderMods(item.mods)}
+        ${item.comment ? `<div class="item-comment"><span class="ic-icon">💬</span>${item.comment}</div>` : ''}
+      </div>
+      <div class="item-hint">tap<br>undo</div>
+    </div>`).join('');
+
+  const bumpLabel = isDone
+    ? '↩ REOPEN ORDER'
+    : allDone
+      ? '✓ BUMP ORDER — All Items Ready!'
+      : `BUMP ORDER &nbsp;·&nbsp; ${doneItems}/${total} items done`;
+
+  const bumpCls = isDone ? 'b-reopen' : allDone ? 'b-ready' : 'b-partial';
+
+  return `
+    <div class="card" id="card-${o.id}">
+      <div class="card-hdr h-${urg}">
+        <div class="hdr-r1">
+          <div class="h-ordnum">${o.num}</div>
+          ${badgeHtml}
+          ${identHtml}
+          ${isDone
+            ? `<div class="h-donetag">✓ DONE</div>`
+            : `<div class="h-elapsed ${tc}"><span class="he-icon">⏱</span>${fmtTimer(o.elapsed)}</div>`
+          }
+        </div>
+        ${!isDone && (dueInHtml || dueTimeHtml) ? `
+        <div class="hdr-r2">
+          ${dueInHtml}
+          ${dueTimeHtml}
+        </div>` : ''}
+      </div>
+      <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
+      ${noteHtml}
+      <div class="items-scroll">${itemsHtml}</div>
+      <button class="bump-btn ${bumpCls}" onclick="bumpOrder(${o.id})">${bumpLabel}</button>
+    </div>`;
+}
+
+// ══════════════════════════════════════════
+// ACTIONS
+// ══════════════════════════════════════════
+function toggleItem(orderId, itemId) {
+  const order = orders.find(o => o.id === orderId);
+  if (!order || order.status === 'completed') return;
+  const item = order.items.find(i => i.id === itemId);
+  if (!item) return;
+
+  if (navigator.vibrate) navigator.vibrate(25);
+
+  item.done = !item.done;
+
+  // Flash animation
+  const el = document.getElementById(`item-${itemId}`);
+  if (el && item.done) {
+    el.classList.add('flash');
+    setTimeout(() => el.classList.remove('flash'), 300);
+  }
+
+  render();
+}
+
+function bumpOrder(orderId) {
+  const order = orders.find(o => o.id === orderId);
+  if (!order) return;
+
+  if (order.status === 'completed') {
+    // Reopen
+    if (navigator.vibrate) navigator.vibrate(40);
+    order.status = 'open';
+    order.items.forEach(i => i.done = false);
+    render();
+    return;
+  }
+
+  // Bump: mark complete
+  if (navigator.vibrate) navigator.vibrate([40, 20, 60]);
+  const snapshot = JSON.parse(JSON.stringify(order));
+  order.status = 'completed';
+  order.items.forEach(i => i.done = true);
+
+  render();
+  showUndo(order, snapshot);
+}
+
+// ══════════════════════════════════════════
+// UNDO TOAST
+// ══════════════════════════════════════════
+function showUndo(order, snapshot) {
+  if (undoTimer)  { clearTimeout(undoTimer); clearInterval(undoCdTick); }
+
+  undoData = { orderId: order.id, snapshot };
+  cdLeft   = UNDO_SECS;
+
+  document.getElementById('toast-title').textContent =
+    `${order.num}${order.name ? ' · ' + order.name : ''} bumped`;
+  document.getElementById('toast-cd').textContent = cdLeft;
+
+  const prog = document.getElementById('toast-prog');
+  prog.style.transition = 'none';
+  prog.style.width = '100%';
+
+  const toast = document.getElementById('toast');
+  toast.classList.add('visible');
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    prog.style.transition = `width ${UNDO_SECS}s linear`;
+    prog.style.width = '0%';
+  }));
+
+  undoCdTick = setInterval(() => {
+    cdLeft--;
+    document.getElementById('toast-cd').textContent = cdLeft;
+    if (cdLeft <= 0) { clearInterval(undoCdTick); hideUndo(); }
+  }, 1000);
+
+  undoTimer = setTimeout(hideUndo, UNDO_SECS * 1000);
+}
+
+function hideUndo() {
+  document.getElementById('toast').classList.remove('visible');
+  undoData = null;
+}
+
+function doUndo() {
+  if (!undoData) return;
+  if (navigator.vibrate) navigator.vibrate(60);
+  clearTimeout(undoTimer);
+  clearInterval(undoCdTick);
+  const idx = orders.findIndex(o => o.id === undoData.orderId);
+  if (idx !== -1) orders[idx] = undoData.snapshot;
+  undoData = null;
+  hideUndo();
+  render();
+}
+
+// ══════════════════════════════════════════
+// FILTERS
+// ══════════════════════════════════════════
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('tab-open').classList.toggle('active', tab === 'open');
+  document.getElementById('tab-completed').classList.toggle('active', tab === 'completed');
+  render();
+}
+
+function filterSrc(btn) {
+  activeSrc = btn.dataset.src;
+  document.querySelectorAll('.sf').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+// ══════════════════════════════════════════
+// CLOCK + TIMERS
+// ══════════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  const h   = now.getHours();
+  const m   = String(now.getMinutes()).padStart(2,'0');
+  const ap  = h >= 12 ? 'PM' : 'AM';
+  const h12 = String(h % 12 || 12).padStart(2,'0');
+  document.getElementById('clock').textContent = `${h12}:${m} ${ap}`;
+}
+
+// Simulate timers ticking every minute (real app would use server timestamps)
+function tickTimers() {
+  orders.filter(o => o.status === 'open').forEach(o => o.elapsed++);
+  render();
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+updateClock();
+setInterval(updateClock, 1000);
+setInterval(tickTimers, 60000);
+render();
+</script>
+</body>
+</html>
