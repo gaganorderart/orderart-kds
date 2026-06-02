@@ -166,6 +166,37 @@ body {
 @media (max-width: 780px) { .card { width: 260px; } }
 .card.exiting { opacity: 0; transform: scale(0.96) translateY(6px); pointer-events: none; }
 
+/* Urgent-due card — pulsing red border */
+.card.urgent-due {
+  border-color: #e74c3c;
+  animation: urgentborder 1.4s ease-in-out infinite;
+}
+@keyframes urgentborder {
+  0%, 100% { border-color: #e74c3c; box-shadow: 0 0 0 0 rgba(231,76,60,0); }
+  50%       { border-color: #ff6b6b; box-shadow: 0 0 8px 2px rgba(231,76,60,0.25); }
+}
+
+/* Urgent alert banner */
+.urgent-banner {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #ff6b6b;
+  background: rgba(231,76,60,0.13);
+  border-bottom: 1px solid rgba(231,76,60,0.25);
+  animation: bannerfade 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes bannerfade {
+  0%, 100% { background: rgba(231,76,60,0.13); }
+  50%       { background: rgba(231,76,60,0.24); }
+}
+
 /* Card header */
 .card-hdr {
   padding: 10px 12px 8px;
@@ -408,6 +439,20 @@ body {
   transition: color 0.2s;
 }
 .item.done .item-qty { color: var(--dim); }
+
+/* Category section header */
+.cat-header {
+  padding: 5px 12px 3px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(0,0,0,0.18);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.cat-header.cat-first { border-top: none; }
 
 .item-body { flex: 1; min-width: 0; }
 
@@ -792,14 +837,14 @@ let orders = [
     id: 1, source: 'dine-in', num: '#45', name: 'Table 3',
     elapsed: 24, sched: null, note: null, status: 'open',
     items: [
-      { id: 101, qty: 2, name: 'Margherita', done: false, mods: [
+      { id: 101, qty: 2, name: 'Margherita', cat: 'pizza', done: false, mods: [
         {t:'variant', v:'Large'},
         {t:'remove',  v:'Basil'},
         {t:'extra',   v:'Mozzarella', qty: 1},
         {t:'dietary', v:'Gluten Free Base'},
       ]},
-      { id: 102, qty: 1, name: 'Bruschetta', done: false, mods: [] },
-      { id: 103, qty: 2, name: 'Soft Drink', done: false, mods: [{t:'variant', v:'Lemonade'}] },
+      { id: 102, qty: 1, name: 'Bruschetta', cat: 'entree', done: false, mods: [] },
+      { id: 103, qty: 2, name: 'Soft Drink', cat: 'drinks', done: false, mods: [{t:'variant', v:'Lemonade'}] },
     ]
   },
 
@@ -808,7 +853,7 @@ let orders = [
     id: 2, source: 'pos-takeaway', num: '#46', name: 'James O.',
     elapsed: 16, sched: '6:15pm', note: null, status: 'open',
     items: [
-      { id: 201, qty: 1, name: 'BBQ Chicken Pizza', done: false, comment: 'Pack it for takeaway', mods: [
+      { id: 201, qty: 1, name: 'BBQ Chicken Pizza', cat: 'pizza', done: false, comment: 'Pack it for takeaway', mods: [
         {t:'variant', v:'Large'},
         {t:'variant', v:'Thin Crust'},
         {t:'extra',   v:'Chicken', qty: 1},
@@ -816,8 +861,8 @@ let orders = [
         {t:'add',     v:'Red Onion'},
         {t:'dietary', v:'Halal Meat'},
       ]},
-      { id: 202, qty: 1, name: 'Cheesy Garlic Bread', done: false, comment: 'Wrap separately', mods: [] },
-      { id: 203, qty: 1, name: 'Soft Drink', done: false, mods: [{t:'variant', v:'Pepsi'}] },
+      { id: 202, qty: 1, name: 'Cheesy Garlic Bread', cat: 'breads', done: false, comment: 'Wrap separately', mods: [] },
+      { id: 203, qty: 1, name: 'Soft Drink', cat: 'drinks', done: false, mods: [{t:'variant', v:'Pepsi'}] },
     ]
   },
 
@@ -826,7 +871,7 @@ let orders = [
     id: 3, source: 'web-delivery', num: '#47', name: 'Sophie M.',
     elapsed: 6, sched: '6:30pm', note: null, status: 'open',
     items: [
-      { id: 301, qty: 1, name: 'Meat Lovers Pizza', done: false, mods: [
+      { id: 301, qty: 1, name: 'Meat Lovers Pizza', cat: 'pizza', done: false, mods: [
         {t:'variant', v:'XL'},
         {t:'variant', v:'Stuffed Crust'},
         {t:'extra',   v:'Pepperoni', qty: 2},
@@ -835,11 +880,11 @@ let orders = [
         {t:'add',     v:'Sun-dried Tomato'},
         {t:'dietary', v:'Halal Meat'},
       ]},
-      { id: 302, qty: 1, name: 'Penne Arrabbiata', done: false, mods: [
+      { id: 302, qty: 1, name: 'Penne Arrabbiata', cat: 'pasta', done: false, mods: [
         {t:'variant', v:'Extra Spicy'},
         {t:'add',     v:'Parmesan'},
       ]},
-      { id: 303, qty: 2, name: 'Garlic Bread', done: false, mods: [] },
+      { id: 303, qty: 2, name: 'Garlic Bread', cat: 'breads', done: false, mods: [] },
     ]
   },
 
@@ -848,16 +893,16 @@ let orders = [
     id: 4, source: 'uber', num: '#48', name: 'Uber #4421',
     elapsed: 21, sched: '6:00pm', note: null, status: 'open',
     items: [
-      { id: 401, qty: 2, name: 'Pepperoni Pizza', done: false, mods: [
+      { id: 401, qty: 2, name: 'Pepperoni Pizza', cat: 'pizza', done: false, mods: [
         {t:'variant', v:'Medium'},
         {t:'extra',   v:'Pepperoni', qty: 1},
       ]},
-      { id: 402, qty: 1, name: 'Arancini (4 pcs)', done: false, mods: [] },
-      { id: 403, qty: 1, name: 'Caesar Salad', done: false, comment: 'Dressing on the side please', mods: [
+      { id: 402, qty: 1, name: 'Arancini (4 pcs)', cat: 'entree', done: false, mods: [] },
+      { id: 403, qty: 1, name: 'Caesar Salad', cat: 'salads', done: false, comment: 'Dressing on the side please', mods: [
         {t:'remove',  v:'Anchovies'},
         {t:'add',     v:'Grilled Chicken'},
       ]},
-      { id: 404, qty: 2, name: 'Tiramisu', done: false, mods: [] },
+      { id: 404, qty: 2, name: 'Tiramisu', cat: 'desserts', done: false, mods: [] },
     ]
   },
 
@@ -866,7 +911,7 @@ let orders = [
     id: 5, source: 'dine-in', num: '#49', name: 'Table 7',
     elapsed: 11, sched: null, note: 'Fully vegan table — no animal products', status: 'open',
     items: [
-      { id: 501, qty: 1, name: 'Truffle Mushroom Pizza', done: false, mods: [
+      { id: 501, qty: 1, name: 'Truffle Mushroom Pizza', cat: 'pizza', done: false, mods: [
         {t:'variant', v:'Large'},
         {t:'remove',  v:'Onion'},
         {t:'add',     v:'Rocket'},
@@ -874,11 +919,11 @@ let orders = [
         {t:'dietary', v:'Vegan Cheese'},
         {t:'dietary', v:'Gluten Free Base'},
       ]},
-      { id: 502, qty: 1, name: 'Pesto Pasta', done: false, mods: [
+      { id: 502, qty: 1, name: 'Pesto Pasta', cat: 'pasta', done: false, mods: [
         {t:'add',     v:'Pine Nuts'},
         {t:'dietary', v:'Dairy Free'},
       ]},
-      { id: 503, qty: 2, name: 'House Salad', done: false, mods: [
+      { id: 503, qty: 2, name: 'House Salad', cat: 'salads', done: false, mods: [
         {t:'remove',  v:'Croutons'},
         {t:'remove',  v:'Feta'},
       ]},
@@ -890,17 +935,17 @@ let orders = [
     id: 6, source: 'pos-delivery', num: '#50', name: 'Chris W.',
     elapsed: 8, sched: '6:45pm', note: null, status: 'open',
     items: [
-      { id: 601, qty: 1, name: 'Hawaiian Pizza', done: false, mods: [
+      { id: 601, qty: 1, name: 'Hawaiian Pizza', cat: 'pizza', done: false, mods: [
         {t:'variant', v:'Large'},
         {t:'remove',  v:'Pineapple'},
         {t:'add',     v:'Jalapeño'},
         {t:'add',     v:'Bacon'},
         {t:'dietary', v:'Halal Meat'},
       ]},
-      { id: 602, qty: 1, name: 'Lasagne', done: false, comment: 'Extra hot please', mods: [
+      { id: 602, qty: 1, name: 'Lasagne', cat: 'pasta', done: false, comment: 'Extra hot please', mods: [
         {t:'extra',   v:'Beef', qty: 1},
       ]},
-      { id: 603, qty: 1, name: 'Panna Cotta', done: false, mods: [
+      { id: 603, qty: 1, name: 'Panna Cotta', cat: 'desserts', done: false, mods: [
         {t:'variant', v:'Vanilla'},
         {t:'add',     v:'Berry Coulis'},
       ]},
@@ -912,16 +957,16 @@ let orders = [
     id: 7, source: 'ai-order', num: '#51', name: 'AI — Voice Order',
     elapsed: 4, sched: '6:50pm', note: 'Placed via AI voice assistant', status: 'open',
     items: [
-      { id: 701, qty: 1, name: 'Spaghetti Bolognese', done: false, mods: [
+      { id: 701, qty: 1, name: 'Spaghetti Bolognese', cat: 'pasta', done: false, mods: [
         {t:'extra',   v:'Meat Sauce', qty: 1},
         {t:'add',     v:'Parmesan'},
         {t:'dietary', v:'Halal Meat'},
       ]},
-      { id: 702, qty: 1, name: 'Fettuccine Alfredo', done: false, mods: [
+      { id: 702, qty: 1, name: 'Fettuccine Alfredo', cat: 'pasta', done: false, mods: [
         {t:'add',     v:'Grilled Chicken'},
         {t:'dietary', v:'Dairy Free'},
       ]},
-      { id: 703, qty: 2, name: 'Cheesy Garlic Bread', done: false, mods: [] },
+      { id: 703, qty: 2, name: 'Cheesy Garlic Bread', cat: 'breads', done: false, mods: [] },
     ]
   },
 
@@ -930,19 +975,19 @@ let orders = [
     id: 8, source: 'web-takeaway', num: '#52', name: 'Emma T.',
     elapsed: 18, sched: '6:10pm', note: '⚠ Severe nut allergy — no pesto or pine nuts', status: 'open',
     items: [
-      { id: 801, qty: 1, name: 'Margherita', done: false, mods: [
+      { id: 801, qty: 1, name: 'Margherita', cat: 'pizza', done: false, mods: [
         {t:'variant', v:'Medium'},
         {t:'add',     v:'Spinach'},
         {t:'add',     v:'Roasted Capsicum'},
         {t:'dietary', v:'Vegan Cheese'},
       ]},
-      { id: 802, qty: 1, name: 'Caesar Salad', done: false, mods: [
+      { id: 802, qty: 1, name: 'Caesar Salad', cat: 'salads', done: false, mods: [
         {t:'remove',  v:'Croutons'},
         {t:'remove',  v:'Anchovies'},
         {t:'add',     v:'Grilled Chicken'},
       ]},
-      { id: 803, qty: 1, name: 'Garlic Bread', done: false, mods: [] },
-      { id: 804, qty: 1, name: 'Tiramisu', done: false, mods: [] },
+      { id: 803, qty: 1, name: 'Garlic Bread', cat: 'breads', done: false, mods: [] },
+      { id: 804, qty: 1, name: 'Tiramisu', cat: 'desserts', done: false, mods: [] },
     ]
   },
 
@@ -951,7 +996,7 @@ let orders = [
     id: 10, source: 'dine-in', num: '#32', name: 'Table 5',
     elapsed: 7, sched: null, note: null, status: 'open',
     items: [
-      { id: 1001, qty: 1, name: 'Amici Special Pizza', done: false, mods: [
+      { id: 1001, qty: 1, name: 'Amici Special Pizza', cat: 'pizza', done: false, mods: [
         {t:'variant',  v:'Large Size'},
         {t:'variant',  v:'Thin Crust Base'},
         {t:'remove',   v:'Mushrooms'},
@@ -964,8 +1009,8 @@ let orders = [
         {t:'dietary',  v:'Vegan Cheese'},
         {t:'dietary',  v:'Halal Meat'},
       ]},
-      { id: 1002, qty: 2, name: 'Garlic Bread', done: false, mods: [] },
-      { id: 1003, qty: 2, name: 'Soft Drink', done: false, mods: [{t:'variant', v:'Coke'}] },
+      { id: 1002, qty: 2, name: 'Garlic Bread', cat: 'breads', done: false, mods: [] },
+      { id: 1003, qty: 2, name: 'Soft Drink', cat: 'drinks', done: false, mods: [{t:'variant', v:'Coke'}] },
     ]
   },
 
@@ -974,9 +1019,9 @@ let orders = [
     id: 9, source: 'pos-takeaway', num: '#44', name: 'Mark R.',
     elapsed: 28, sched: '5:45pm', note: null, status: 'completed',
     items: [
-      { id: 901, qty: 1, name: 'Pepperoni Pizza', done: true, mods: [{t:'variant', v:'Medium'}] },
-      { id: 902, qty: 1, name: 'Cheesy Garlic Bread', done: true, mods: [] },
-      { id: 903, qty: 2, name: 'Soft Drink', done: true, mods: [{t:'variant', v:'Coke'}] },
+      { id: 901, qty: 1, name: 'Pepperoni Pizza', cat: 'pizza', done: true, mods: [{t:'variant', v:'Medium'}] },
+      { id: 902, qty: 1, name: 'Cheesy Garlic Bread', cat: 'breads', done: true, mods: [] },
+      { id: 903, qty: 2, name: 'Soft Drink', cat: 'drinks', done: true, mods: [{t:'variant', v:'Coke'}] },
     ]
   },
 
@@ -1013,7 +1058,7 @@ function fmtTimer(mins) {
 }
 // Parse "6:15pm" → minutes until that time (null if no sched)
 // Uses a demo base of 5:50 PM so all sample scheduled times look realistic
-const DEMO_NOW_MINS = 17 * 60 + 50; // 5:50 PM in minutes since midnight
+const DEMO_NOW_MINS = 17 * 60 + 55; // 5:55 PM in minutes since midnight
 function getDueIn(schedStr) {
   if (!schedStr) return null;
   const m = schedStr.match(/^(\d+):(\d+)(am|pm)$/i);
@@ -1027,6 +1072,18 @@ function getDueIn(schedStr) {
   const diff = schedMins - DEMO_NOW_MINS;
   return diff >= 0 ? diff : diff + 24 * 60; // wrap past midnight
 }
+const CATEGORY_ORDER = [
+  'entree','mains','salads','pasta','pizza','burgers',
+  'breads','biryani','desserts','drinks','cocktails',
+  'mocktails','coffee','sides','alcohol'
+];
+const CATEGORY_LABELS = {
+  entree:'Entrée', mains:'Mains', salads:'Salads', pasta:'Pasta',
+  pizza:'Pizza', burgers:'Burgers', breads:'Breads', biryani:'Biryani',
+  desserts:'Desserts', drinks:'Drinks', cocktails:'Cocktails',
+  mocktails:'Mocktails', coffee:'Coffee', sides:'Sides', alcohol:'Alcohol'
+};
+
 const SRC_META = {
   'dine-in'      : { icon:'🍽', label:'Dine In',       cls:'s-dine-in'      },
   'pos-takeaway' : { icon:'🛍', label:'POS Takeaway',  cls:'s-pos-takeaway' },
@@ -1056,6 +1113,18 @@ function render() {
     return true;
   });
 
+  // Urgent-due orders (dueIn ≤ 5m) stack first, most urgent at the front
+  visible.sort((a, b) => {
+    const aDueIn = getDueIn(a.sched);
+    const bDueIn = getDueIn(b.sched);
+    const aUrgent = aDueIn !== null && aDueIn <= 5;
+    const bUrgent = bDueIn !== null && bDueIn <= 5;
+    if (aUrgent && !bUrgent) return -1;
+    if (!aUrgent && bUrgent) return 1;
+    if (aUrgent && bUrgent) return aDueIn - bDueIn;
+    return 0;
+  });
+
   if (visible.length === 0) {
     const emptyMsg = activeTab === 'open'
       ? ['🍳', 'All caught up!', 'No open orders — new orders will appear here.']
@@ -1070,6 +1139,21 @@ function render() {
   }
 
   grid.innerHTML = visible.map(renderCard).join('');
+}
+
+// ── Render a single item row ──
+function renderItem(item, orderId) {
+  return `
+    <div class="item${item.done ? ' done' : ''}" id="item-${item.id}" onclick="toggleItem(${orderId},${item.id})">
+      <div class="chk">${item.done ? '✓' : ''}</div>
+      <div class="item-qty">${item.qty}</div>
+      <div class="item-body">
+        <div class="item-name">${item.name}</div>
+        ${renderMods(item.mods)}
+        ${item.comment ? `<div class="item-comment"><span class="ic-icon">💬</span>${item.comment}</div>` : ''}
+      </div>
+      <div class="item-hint">tap<br>undo</div>
+    </div>`;
 }
 
 // ── Render grouped modifiers ──
@@ -1145,17 +1229,20 @@ function renderCard(o) {
       <span>${o.note}</span>
     </div>` : '';
 
-  const itemsHtml = o.items.map(item => `
-    <div class="item${item.done ? ' done' : ''}" id="item-${item.id}" onclick="toggleItem(${o.id},${item.id})">
-      <div class="chk">${item.done ? '✓' : ''}</div>
-      <div class="item-qty">${item.qty}</div>
-      <div class="item-body">
-        <div class="item-name">${item.name}</div>
-        ${renderMods(item.mods)}
-        ${item.comment ? `<div class="item-comment"><span class="ic-icon">💬</span>${item.comment}</div>` : ''}
-      </div>
-      <div class="item-hint">tap<br>undo</div>
-    </div>`).join('');
+  // Group items by category, preserve order within each group
+  const catGroups = {};
+  o.items.forEach(item => {
+    const c = item.cat || 'mains';
+    if (!catGroups[c]) catGroups[c] = [];
+    catGroups[c].push(item);
+  });
+  const activeCats = CATEGORY_ORDER.filter(c => catGroups[c]);
+  const multiCat   = activeCats.length > 1;
+
+  const itemsHtml = activeCats.map((cat, idx) => `
+    ${multiCat ? `<div class="cat-header${idx === 0 ? ' cat-first' : ''}">${CATEGORY_LABELS[cat]}</div>` : ''}
+    ${catGroups[cat].map(item => renderItem(item, o.id)).join('')}
+  `).join('');
 
   const bumpLabel = isDone
     ? '↩ REOPEN ORDER'
@@ -1163,10 +1250,11 @@ function renderCard(o) {
       ? '✓ BUMP ORDER — All Items Ready!'
       : `BUMP ORDER &nbsp;·&nbsp; ${doneItems}/${total} items done`;
 
-  const bumpCls = isDone ? 'b-reopen' : allDone ? 'b-ready' : 'b-partial';
+  const bumpCls    = isDone ? 'b-reopen' : allDone ? 'b-ready' : 'b-partial';
+  const isUrgentDue = !isDone && dueIn !== null && dueIn <= 5;
 
   return `
-    <div class="card" id="card-${o.id}">
+    <div class="card${isUrgentDue ? ' urgent-due' : ''}" id="card-${o.id}">
       <div class="card-hdr h-${urg}">
         <div class="hdr-r1">
           <div class="h-ordnum">${o.num}</div>
@@ -1183,6 +1271,10 @@ function renderCard(o) {
           ${dueTimeHtml}
         </div>` : ''}
       </div>
+      ${isUrgentDue ? `
+      <div class="urgent-banner">
+        <span>⚡</span> Due in ${dueIn > 0 ? dueIn + 'm' : 'NOW'} — Prepare immediately
+      </div>` : ''}
       <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
       ${noteHtml}
       <div class="items-scroll">${itemsHtml}</div>
