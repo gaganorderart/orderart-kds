@@ -324,6 +324,21 @@ body {
 .h-duein.di-soon  { color: #ff6b6b; background: rgba(255,107,107,0.13); }
 .h-duein.di-close { color: #ffc07a; background: rgba(255,192,122,0.13); }
 
+/* Future date badge (row 2 — replaces due-in for next-day+ orders) */
+.h-datedue {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 800;
+  border-radius: 6px;
+  padding: 3px 10px;
+  color: #74c6ff;
+  background: rgba(52,152,219,0.15);
+  border: 1px solid rgba(52,152,219,0.32);
+  white-space: nowrap;
+}
+
 /* Scheduled due time (row 2 right) */
 .h-duetime {
   display: inline-flex;
@@ -955,7 +970,7 @@ let orders = [
   // ── #51 AI Voice — simple pasta run ──
   {
     id: 7, source: 'ai-order', num: '#51', name: 'AI — Voice Order',
-    elapsed: 4, sched: '6:50pm', note: 'Placed via AI voice assistant', status: 'open',
+    elapsed: 4, sched: '7:30pm', sched_date: 'Sun 25 May', note: 'Placed via AI voice assistant', status: 'open',
     items: [
       { id: 701, qty: 1, name: 'Spaghetti Bolognese', cat: 'pasta', done: false, mods: [
         {t:'extra',   v:'Meat Sauce', qty: 1},
@@ -973,7 +988,7 @@ let orders = [
   // ── #52 Emma T. — Web Takeaway — nut allergy ──
   {
     id: 8, source: 'web-takeaway', num: '#52', name: 'Emma T.',
-    elapsed: 18, sched: '6:10pm', note: '⚠ Severe nut allergy — no pesto or pine nuts', status: 'open',
+    elapsed: 18, sched: '12:30pm', sched_date: 'Tomorrow', note: '⚠ Severe nut allergy — no pesto or pine nuts', status: 'open',
     items: [
       { id: 801, qty: 1, name: 'Margherita', cat: 'pizza', done: false, mods: [
         {t:'variant', v:'Medium'},
@@ -1212,8 +1227,9 @@ function renderCard(o) {
     ? '' // table info already in the badge
     : (o.name ? `<div class="h-name">${o.name}</div>` : '');
 
-  // Due-in countdown from scheduled time
-  const dueIn     = getDueIn(o.sched);
+  // Due-in countdown from scheduled time (suppressed for future-date orders)
+  const isFutureDate = !!o.sched_date;
+  const dueIn     = isFutureDate ? null : getDueIn(o.sched);
   const dueInCls  = dueIn !== null
     ? (dueIn <= 5 ? 'di-soon' : dueIn <= 15 ? 'di-close' : '') : '';
   const dueInHtml = dueIn !== null
@@ -1221,6 +1237,10 @@ function renderCard(o) {
     : '';
   const dueTimeHtml = o.sched
     ? `<div class="h-duetime"><span>🕐</span>${o.sched}</div>`
+    : '';
+  // Future date badge — shown instead of due-in for next-day+ orders
+  const futureDateHtml = isFutureDate
+    ? `<div class="h-datedue"><span>📅</span>${o.sched_date}</div>`
     : '';
 
   const noteHtml = o.note ? `
@@ -1251,7 +1271,7 @@ function renderCard(o) {
       : `BUMP ORDER &nbsp;·&nbsp; ${doneItems}/${total} items done`;
 
   const bumpCls    = isDone ? 'b-reopen' : allDone ? 'b-ready' : 'b-partial';
-  const isUrgentDue = !isDone && dueIn !== null && dueIn <= 5;
+  const isUrgentDue = !isDone && !isFutureDate && dueIn !== null && dueIn <= 5;
 
   return `
     <div class="card${isUrgentDue ? ' urgent-due' : ''}" id="card-${o.id}">
@@ -1265,8 +1285,9 @@ function renderCard(o) {
             : `<div class="h-elapsed ${tc}"><span class="he-icon">⏱</span>${fmtTimer(o.elapsed)}</div>`
           }
         </div>
-        ${!isDone && (dueInHtml || dueTimeHtml) ? `
+        ${!isDone && (futureDateHtml || dueInHtml || dueTimeHtml) ? `
         <div class="hdr-r2">
+          ${futureDateHtml}
           ${dueInHtml}
           ${dueTimeHtml}
         </div>` : ''}
