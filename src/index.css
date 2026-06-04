@@ -702,6 +702,24 @@ body {
 }
 @keyframes blink { 0%,100%{ opacity:1; } 50%{ opacity:0.45; } }
 
+.conn-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  white-space: nowrap;
+  margin-right: 12px;
+}
+.conn-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: background 0.4s;
+}
+
 /* ══════════════════════════════════════════
    EMPTY STATE
 ══════════════════════════════════════════ */

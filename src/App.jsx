@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { INITIAL_ORDERS } from './data'
+import { useOrders } from './hooks/useOrders'
 import TopBar from './components/TopBar'
 import OrderGrid from './components/OrderGrid'
 import BottomBar from './components/BottomBar'
@@ -8,7 +8,7 @@ import UndoToast from './components/UndoToast'
 const UNDO_SECS = 8
 
 export default function App() {
-  const [orders, setOrders] = useState(INITIAL_ORDERS)
+  const { orders, setOrders, bump, reopen, toggleItem: serverToggle, connected } = useOrders()
   const [activeTab, setActiveTab] = useState('open')
   const [activeSrc, setActiveSrc] = useState('all')
   const [undoState, setUndoState] = useState(null)
@@ -18,11 +18,11 @@ export default function App() {
   const undoCdTickRef = useRef(null)
   const cdLeftRef     = useRef(UNDO_SECS)
 
-  // Simulate elapsed time ticking every minute
+  // Tick elapsed time every minute for open orders
   useEffect(() => {
     const id = setInterval(() => {
       setOrders(prev =>
-        prev.map(o => o.status === 'open' ? { ...o, elapsed: o.elapsed + 1 } : o)
+        prev.map(o => o.status === 'open' ? { ...o, elapsed: (o.elapsed ?? 0) + 1 } : o)
       )
     }, 60_000)
     return () => clearInterval(id)
@@ -33,15 +33,18 @@ export default function App() {
 
   function toggleItem(orderId, itemId) {
     navigator.vibrate?.(25)
-    setOrders(prev => prev.map(o => {
-      if (o.id !== orderId || o.status === 'completed') return o
-      return {
+    const order = orders.find(o => o.id === orderId)
+    if (!order || order.status === 'completed') return
+    const item = order.items.find(i => i.id === itemId)
+    if (!item) return
+    const nextDone = !item.done
+    setOrders(prev => prev.map(o =>
+      o.id !== orderId ? o : {
         ...o,
-        items: o.items.map(item =>
-          item.id === itemId ? { ...item, done: !item.done } : item
-        ),
+        items: o.items.map(i => i.id === itemId ? { ...i, done: nextDone } : i),
       }
-    }))
+    ))
+    serverToggle(orderId, itemId, nextDone)
   }
 
   function bumpOrder(orderId) {
@@ -55,6 +58,7 @@ export default function App() {
           ? { ...o, status: 'open', items: o.items.map(i => ({ ...i, done: false })) }
           : o
       ))
+      reopen(orderId)
       return
     }
 
@@ -65,6 +69,7 @@ export default function App() {
         ? { ...o, status: 'completed', items: o.items.map(i => ({ ...i, done: true })) }
         : o
     ))
+    bump(orderId)
     showUndo(order, snapshot)
   }
 
@@ -98,6 +103,7 @@ export default function App() {
     clearInterval(undoCdTickRef.current)
     const { orderId, snapshot } = undoState
     setOrders(prev => prev.map(o => o.id === orderId ? snapshot : o))
+    reopen(orderId)
     setUndoState(null)
   }
 
@@ -118,7 +124,7 @@ export default function App() {
         onToggleItem={toggleItem}
         onBumpOrder={bumpOrder}
       />
-      <BottomBar openCount={openCount} doneCount={doneCount} />
+      <BottomBar openCount={openCount} doneCount={doneCount} connected={connected} />
       <UndoToast
         undoState={undoState}
         sessionId={undoSessionId}

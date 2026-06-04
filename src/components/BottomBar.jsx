@@ -1,4 +1,4 @@
-export default function BottomBar({ openCount, doneCount }) {
+export default function BottomBar({ openCount, doneCount, connected }) {
   return (
     <div className="botbar">
       <div className="bstat">Open <strong>{openCount}</strong></div>
@@ -17,6 +17,10 @@ export default function BottomBar({ openCount, doneCount }) {
         </div>
       </div>
       <div className="b-spacer" />
+      <div className="conn-status">
+        <div className="conn-led" style={{ background: connected ? '#22c55e' : '#ef4444' }} />
+        {connected ? 'LIVE' : 'OFFLINE'}
+      </div>
       <div className="printer">
         <div className="pled" />KDS PRINTER 1
       </div>
