@@ -4,6 +4,8 @@ import { io } from 'socket.io-client'
 const SERVER_URL = import.meta.env.VITE_KDS_SERVER ?? 'http://localhost:4000'
 
 function getRestaurantId() {
+  const stored = localStorage.getItem('kds_rid')
+  if (stored) return stored
   const param = new URLSearchParams(window.location.search).get('restaurant')
   return param ?? (import.meta.env.VITE_RESTAURANT_ID ?? '1')
 }

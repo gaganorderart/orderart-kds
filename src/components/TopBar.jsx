@@ -11,7 +11,7 @@ const SOURCE_FILTERS = [
   { src: 'ai-order',     label: '🤖 AI Orders' },
 ]
 
-export default function TopBar({ activeTab, activeSrc, openCount, doneCount, onSwitchTab, onFilterSrc }) {
+export default function TopBar({ activeTab, activeSrc, openCount, doneCount, onSwitchTab, onFilterSrc, onLogout }) {
   const [clock, setClock] = useState('')
 
   useEffect(() => {
@@ -72,6 +72,15 @@ export default function TopBar({ activeTab, activeSrc, openCount, doneCount, onS
 
       <div className="spacer" />
       <div className="clock">{clock}</div>
+      {onLogout && (
+        <button className="logout-btn" onClick={onLogout} title="Sign out">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </button>
+      )}
     </div>
   )
 }

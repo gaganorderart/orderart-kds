@@ -7,7 +7,7 @@ import UndoToast from './components/UndoToast'
 
 const UNDO_SECS = 8
 
-export default function App() {
+export default function App({ onLogout }) {
   const { orders, setOrders, bump, reopen, toggleItem: serverToggle, connected } = useOrders()
   const [activeTab, setActiveTab] = useState('open')
   const [activeSrc, setActiveSrc] = useState('all')
@@ -116,6 +116,7 @@ export default function App() {
         doneCount={doneCount}
         onSwitchTab={setActiveTab}
         onFilterSrc={setActiveSrc}
+        onLogout={onLogout}
       />
       <OrderGrid
         orders={orders}
